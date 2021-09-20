@@ -16,9 +16,13 @@ typedef struct {
     int dstID; //  in transfer, the one whose balance increase.
     int money; // in transfer, the amount for transfer.
     BalanceHistory *balanceHistory;
+    int *fdArrayPointer;
+    int childProcessNums;
 } __attribute__((packed)) ProcessDetail;
 
 
-void getProcessNums(int argc, char *argv[]);
-void getInitBalance(char *argv[]);
-void constructMessage(int type, char *buf, ProcessDetail processDetail);
+int getProcessNums(int argc, char *argv[]);
+void getInitBalance(char *argv[], int childProcessNums, int *initBalance);
+void constructMessage(int type, char *buf, ProcessDetail *processDetail);
+
+

@@ -20,21 +20,18 @@ int childProcess_nums = 0;
 int initBalance[MAX_PROCESS_ID + 1];
 BalanceState nowState;
 BalanceHistory balanceHistory;
+AllHistory allHistory;
 
-void getAllMessage(int type, int targetNums)
+void getAllMessage(int type, int childProcessNums)
 {
     char buf[MAX_MESSAGE_LEN];
     Message *msg = (Message *)buf;
     int count = 0;
     int isRead[MAX_PROCESS_ID + 1] = {0};
-    ProcessInformation pi = {
-            .local_id = LOCAL_ID,
-            .fileDescriptor = 0;
-    };
 
-    while(count < targetNums)
+    while(count < childProcessNums)
     {
-        for(int i = 1; i < targetNums + 1; i++)
+        for(int i = 1; i < childProcessNums + 1; i++)
         {
             if(LOCAL_ID == i)
                 continue;
@@ -43,16 +40,34 @@ void getAllMessage(int type, int targetNums)
             if(!isRead[i]){
                 int tmp = receive(&fd, i, msg);
                 if(tmp == 0){ // successfully read data from pipe.
-                    if(msg->s_header.s_type == STARTED){
-                        isRead[i] = 1;
-                        count++;
+                    switch (type) {
+                        case STARTED:
+                        case DONE:{
+                            if(msg->s_header.s_type == type){
+                                isRead[i] = 1;
+                                count++;
+                            }
+                            break;
+                        }
+                        case BALANCE_HISTORY:{
+                            if(msg->s_header.s_type == type){
+                                isRead[i] = 1;
+                                count++;
+                            }
+
+                            allHistory.s_history[i].s_history_len = ((BalanceHistory *)(msg->s_payload))->s_history_len;
+                            //allHistory.s_history[i].s_history = ((BalanceHistory *)(msg->s_payload))->s_history;
+                            memcpy(allHistory.s_history[i].s_history, ((BalanceHistory *)(msg->s_payload))->s_history, sizeof(BalanceState) * ((BalanceHistory *)(msg->s_payload))->s_history_len);
+                            allHistory.s_history[i].s_id = ((BalanceHistory *)(msg->s_payload))->s_id;
+                            break;
+                        }
                     }
+
                 } else if(tmp == 1){
                     printf("Read from pipe failed.\n");
                 } else if (tmp == 2){ // pipe is empty, try again later.
                     printf("There is no data from Process %d to Process %d now. Please wait.\n", i, LOCAL_ID);
                 }
-
             }
         }
     }
@@ -77,12 +92,11 @@ void dealWithTransferAndStop()
 
             switch (msg->s_header.s_type) {
                 case STOP :
-                    return 0;
+                    return;
                 case TRANSFER :
                 {
                     TransferOrder *transferOrder = (TransferOrder *)(msg->s_payload);
                     ProcessDetail pd = {
-                            .belong = i,
                             .money = transferOrder->s_amount,
                             .state = nowState,
                             .localID = LOCAL_ID,
@@ -95,7 +109,6 @@ void dealWithTransferAndStop()
                         int balance = nowState.s_balance;
                         nowState.s_balance = balance - transferOrder->s_amount;
                         nowState.s_time = get_physical_time();
-
 
                         constructMessage(TRANSFER, buf, &pd);
                         int writeFd = writer[LOCAL_ID][transferOrder->s_dst];
@@ -120,13 +133,29 @@ void dealWithTransferAndStop()
         }
     }
 }
+
 void doParentWork()
 {
+    char buffer[MAX_MESSAGE_LEN];
+    memset(buffer, 0, sizeof(buffer));
+    Message *msg = (Message *)buffer;
+    ProcessDetail pd = {
+            .childProcessNums = childProcess_nums,
+            .belong = LOCAL_ID,
+            .fdArrayPointer = writer[LOCAL_ID]
+    };
+
     // 1. getAllStartedMessage();
+    getAllMessage(STARTED, childProcess_nums);
     // 2. bank_robbery();
+    bank_robbery(NULL, childProcess_nums);
     // 3. sendStopMessage();
+
+    constructMessage(STOP, buffer, &pd);
+    send_multicast(&pd, msg);
     // 4. collectBalanceHistories();
-    AllHistory allHistory;
+    //AllHistory allHistory;
+    getAllMessage(BALANCE_HISTORY, childProcess_nums);
     allHistory.s_history_len = childProcess_nums;
 
     // 5. print_history();
@@ -135,8 +164,7 @@ void doParentWork()
 void doChildWork()
 {
     char buffer[MAX_MESSAGE_LEN + 1];
-
-    timestamp_t startTime = get_physical_time();
+    memset(buffer, 0, sizeof(buffer));
 
     nowState.s_balance = initBalance[LOCAL_ID];
     nowState.s_time = get_physical_time();
@@ -178,8 +206,8 @@ void doChildWork()
 
 int main(int argc, char *argv[])
 {
-    getProcessNums(argc, argv);
-    getInitBalance(argv);
+    childProcess_nums = getProcessNums(argc, argv);
+    getInitBalance(argv, childProcess_nums, initBalance);
 
     FILE *filePointer = NULL;
     if((filePointer = fopen(events_log, "a+")) == NULL){
@@ -189,8 +217,8 @@ int main(int argc, char *argv[])
 
 
     /* create the topology of pipes before create the children process by fork(). */
-    for(int i = 0; i < process_nums + 1; i++){
-        for(int j = 0; j < process_nums + 1; j++){
+    for(int i = 0; i < childProcess_nums + 1; i++){
+        for(int j = 0; j < childProcess_nums + 1; j++){
             if(i == j)
                 continue;
 
@@ -214,7 +242,7 @@ int main(int argc, char *argv[])
 
     parent_PID = getpid();
     /* Create the children processes by fork(). */
-    for(int i = 1; i < process_nums + 1; i++)
+    for(int i = 1; i < childProcess_nums + 1; i++)
     {
         pid_t pid = fork();
         if(pid > 0)

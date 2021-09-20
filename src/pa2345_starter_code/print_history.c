@@ -1,3 +1,8 @@
+#include "banking.h"
+#include "stdio.h"
+#include "stdlib.h"
+#include "string.h"
+
 void print_history(const AllHistory * history)
 {
     if (history == NULL) {
@@ -86,14 +91,16 @@ void print_history(const AllHistory * history)
     } else {
         printf("\nFull balance history for time range [0;%d], $balance:\n", max_time);
     }
-    printf(hline);
+    //printf(hline);
+    printf("%s\n",hline);
     
     printf("%s ", first_column_header);
     for (int j = 0; j <= max_time; ++j) {
         printf("%*d |", max_cell_width - 1, j);
     }
     printf("\n");
-    printf(hline);
+    //printf(hline);
+    printf("%s\n",hline);
 
     for (int i = 1; i <= history->s_history_len; ++i) {
         printf("%11d | ", i);
@@ -106,7 +113,8 @@ void print_history(const AllHistory * history)
             printf("%*s|", max_cell_width, buf);
         }
         printf("\n");
-        printf(hline);
+        //printf(hline);
+        printf("%s\n",hline);
     }
 
     printf("      Total | ");
@@ -114,5 +122,6 @@ void print_history(const AllHistory * history)
         printf("%*d |", max_cell_width - 1, table[nrows-1][j].balance);
     }
     printf("\n");
-    printf(hline);
+    //printf(hline);
+    printf("%s\n",hline);
 }

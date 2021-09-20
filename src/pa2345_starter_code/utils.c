@@ -32,11 +32,20 @@ void constructMessage(int type, char *buf, ProcessDetail *pd)
         }
         case TRANSFER:{
             mHeader->s_type = TRANSFER;
-            if(pd.belong == PARENT_ID){
-                sprintf(msg->s_payload, log_transfer_out_fmt, pd->state.s_time, pd->localID, pd->money, pd->dstID);
-            } else{
-                sprintf(msg->s_payload, log_transfer_in_fmt, pd->state.s_time, pd->dstID, pd->money, pd->srcID);
+            if(pd->belong == PARENT_ID){
+                // the Parent Process transfer money from Csrc to Cdst process.
+                TransferOrder  transferOrder = {
+                        .s_src = pd->srcID,
+                        .s_dst = pd->dstID,
+                        .s_amount = pd->money
+                };
+                memcpy(msg->s_payload, &transferOrder, sizeof(TransferOrder));
+                //sprintf(msg->s_payload, log_transfer_out_fmt, pd->state.s_time, pd->localID, pd->money, pd->dstID);
             }
+//            else{
+//
+//                sprintf(msg->s_payload, log_transfer_in_fmt, pd->state.s_time, pd->dstID, pd->money, pd->srcID);
+//            }
             break;
         }
         case ACK:{
@@ -66,15 +75,16 @@ void constructMessage(int type, char *buf, ProcessDetail *pd)
     buf[messageLen - 1] = '\0';
 }
 
-void getProcessNums(int argc, char *argv[])
+int getProcessNums(int argc, char *argv[])
 {
     int ch;
+    int childProcess_nums = 0;
     if((ch = getopt(argc, argv, "p:")) != -1)
     {
         switch (ch) {
             case 'p':
                 childProcess_nums = optarg[0] - '0';
-                printf("%d child process will be created.\n", childProcessNums);
+                printf("%d child process will be created.\n", childProcess_nums);
                 break;
             default:
                 printf("No such option supported.\n");
@@ -84,10 +94,11 @@ void getProcessNums(int argc, char *argv[])
         printf("Can't get the number of child process\n");
         exit(1);
     }
+    return childProcess_nums;
 }
-void getInitBalance(char *argv[])
+void getInitBalance(char *argv[], int childProcessNums, int *initBalance)
 {
-    for(int i = 1; i < childProcess_nums + 1; i++)
+    for(int i = 1; i < childProcessNums + 1; i++)
     {
         initBalance[i] = atoi(argv[i + 3]);
     }
