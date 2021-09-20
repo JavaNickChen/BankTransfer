@@ -8,9 +8,11 @@
  */
 
 #include "banking.h"
+#include "stdio.h"
 
 void bank_robbery(void * parent_data, local_id max_id)
 {
+    printf("[bank_robbery] In function bank_robbery()\n");
     for (int i = 1; i < max_id; ++i) {
         transfer(parent_data, i, i + 1, i);
     }

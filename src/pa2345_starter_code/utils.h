@@ -9,15 +9,15 @@
 typedef struct {
     BalanceState state;
     local_id localID;
-    int PID;
-    int parentID;
-    int belong; // which process the struct variable from.
-    int srcID; // in transfer, the one whose money is out.
-    int dstID; //  in transfer, the one whose balance increase.
-    int money; // in transfer, the amount for transfer.
+    uint16_t PID;
+    uint16_t parentID;
+    uint16_t belong; // which process the struct variable from.
+    uint16_t srcID; // in transfer, the one whose money is out.
+    uint16_t dstID; //  in transfer, the one whose balance increase.
+    uint16_t money; // in transfer, the amount for transfer.
     BalanceHistory *balanceHistory;
     int *fdArrayPointer;
-    int childProcessNums;
+    uint16_t childProcessNums;
 } __attribute__((packed)) ProcessDetail;
 
 

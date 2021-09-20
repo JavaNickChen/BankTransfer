@@ -16,22 +16,25 @@ void constructMessage(int type, char *buf, ProcessDetail *pd)
     MessageHeader *mHeader = (MessageHeader *)buf;
     mHeader->s_magic = MESSAGE_MAGIC;
 
-    mHeader->s_local_time = 0;
+    mHeader->s_local_time = get_physical_time();
     int8_t mHeaderLen = sizeof(MessageHeader);
 
     switch (type) {
         case STARTED:{
             mHeader->s_type = STARTED;
             sprintf(msg->s_payload, log_started_fmt, pd->state.s_time, pd->localID, pd->PID, pd->parentID, pd->state.s_balance);
+            mHeader->s_payload_len = strlen(msg->s_payload) + 1;
             break;
         }
         case DONE:{
             mHeader->s_type = DONE;
             sprintf(msg->s_payload, log_done_fmt, pd->state.s_time, pd->localID, pd->state.s_balance);
+            mHeader->s_payload_len = strlen(msg->s_payload) + 1;
             break;
         }
         case TRANSFER:{
             mHeader->s_type = TRANSFER;
+            mHeader->s_payload_len = sizeof(TransferOrder);
             if(pd->belong == PARENT_ID){
                 // the Parent Process transfer money from Csrc to Cdst process.
                 TransferOrder  transferOrder = {
@@ -51,19 +54,23 @@ void constructMessage(int type, char *buf, ProcessDetail *pd)
         case ACK:{
             mHeader->s_type = ACK;
             sprintf(msg->s_payload, "This is an ACK-type message.");
+            mHeader->s_payload_len = strlen(msg->s_payload) + 1;
             break;
         }
         case STOP:{
             mHeader->s_type = STOP;
             sprintf(msg->s_payload, "This is an STOP-type message.");
+            mHeader->s_payload_len = strlen(msg->s_payload) + 1;
             break;
         }
         case BALANCE_HISTORY:{
             mHeader->s_type = BALANCE_HISTORY;
             memcpy(msg->s_payload, pd->balanceHistory, sizeof(BalanceHistory));
+            mHeader->s_payload_len = sizeof(BalanceHistory);
         }
         default:{
             sprintf(msg->s_payload, "This is filled by default.");
+            mHeader->s_payload_len = strlen(msg->s_payload) + 1;
         }
 //        case STOP:{
 //
@@ -71,7 +78,7 @@ void constructMessage(int type, char *buf, ProcessDetail *pd)
 //        }
     }
     mHeader->s_payload_len = strlen(msg->s_payload);
-    int8_t messageLen = strlen(msg->s_payload) + mHeaderLen + 1;
+    uint16_t messageLen = strlen(msg->s_payload) + mHeaderLen + 1;
     buf[messageLen - 1] = '\0';
 }
 
@@ -100,6 +107,7 @@ void getInitBalance(char *argv[], int childProcessNums, int *initBalance)
 {
     for(int i = 1; i < childProcessNums + 1; i++)
     {
-        initBalance[i] = atoi(argv[i + 3]);
+        initBalance[i] = atoi(argv[i + 2]);
+        printf("[getInitBalance] i= %d, balance: %d\n", i, initBalance[i]);
     }
 }
